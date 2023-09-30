@@ -56,18 +56,23 @@ program
         console.log(`${chalk.cyan.bold("info")} scaffolding inside ${root}\n`);
 
         await makeFolders(projectRoot);
+
+        await makeFolders(join(projectRoot, "assets"));
+
         await makeFile(
             join(projectRoot, "src", "index.ts"),
             projectRoot,
             `// This is the main file that handles loading scenes and importing kaboom.
 // You never modify the loadScenes function, but feel free to load some
-// assets using loadSprite, etc.
+// global assets using loadSprite, etc.
 
 import kaboom from "kaboom";
 kaboom();
 
-// You can add your asset loading calls here
-// loadSprite("...", "...")
+// You can add your global asset loading calls here, if you only use an asset in a single scene, then load it in there.
+// For example:
+// import playerSpriteURL from "@assets/player.png";
+// loadSprite("player", playerSpriteURL);
 
 async function loadScenes() {
     // Get all scene files inside ./scenes
@@ -108,7 +113,7 @@ loadScenes();
         await makeFile(
             join(projectRoot, "src", "scenes", "main.ts"),
             projectRoot,
-            `import { addGreetText } from "../components/greet";
+            `import { addGreetText } from "@components/greet";
 
 export default function scene() {
     console.log("SCENE main");
@@ -124,7 +129,7 @@ export default function scene() {
         await makeFile(
             join(projectRoot, "src", "scenes", "other.ts"),
             projectRoot,
-            `import { addGreetText } from "../components/greet";
+            `import { addGreetText } from "@components/greet";
 
 export default function scene() {
     console.log("SCENE other");
@@ -162,7 +167,7 @@ export default function scene() {
                     printWidth: 120,
                 },
                 null,
-                2
+                4
             )
         );
 
@@ -188,7 +193,7 @@ export default function scene() {
                     license: "ISC",
                 },
                 null,
-                2
+                4
             )
         );
 
@@ -203,11 +208,32 @@ export default function scene() {
                         module: "ESNext",
                         typeRoots: ["./node_modules"],
                         types: ["kaboom/dist/global.d.ts", "vite/client"],
+                        paths: {
+                            "@assets/*": ["./assets/*"],
+                            "@components/*": ["./src/components/*"],
+                        },
                     },
                 },
                 null,
-                2
+                4
             )
+        );
+
+        await makeFile(
+            join(projectRoot, "vite.config.js"),
+            projectRoot,
+            `import { fileURLToPath, URL } from "url";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+    resolve: {
+        alias: {
+            "@assets": fileURLToPath(new URL("./assets", import.meta.url)),
+            "@components": fileURLToPath(new URL("./src/components", import.meta.url)),
+        },
+    },
+});
+`
         );
 
         const recommendedCommands = [`cd ${root}`, `npm install -D`, `npm run start`];
