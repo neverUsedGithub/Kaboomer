@@ -183,7 +183,8 @@ export default function scene() {
                     description: "A project scaffolded by Kaboomer.",
                     main: "dist/index.js",
                     scripts: {
-                        start: "vite .",
+                        dev: "vite .",
+                        start: "vite build && vite preview",
                         format: "prettier -w src/**",
                     },
                     dependencies: { kaboom: "latest" },
@@ -236,7 +237,7 @@ export default defineConfig({
 `
         );
 
-        const recommendedCommands = [`cd ${root}`, `npm install -D`, `npm run start`];
+        const recommendedCommands = [`cd ${root}`, `npm install -D`, `npm run dev`];
 
         console.log(`\n${chalk.green.bold("done")} scaffolded project in ${chalk.cyan(root)}, get started by running:`);
 
