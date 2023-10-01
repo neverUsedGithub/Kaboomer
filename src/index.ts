@@ -30,6 +30,9 @@ function runCommand(command: string, cwd: string) {
     return new Promise((res, rej) => {
         const child = exec(command, { cwd });
 
+        child.stdout?.on("data", (data) => process.stdout.write(`> ${data}`));
+        child.stderr?.on("data", (data) => process.stdout.write(`> ${data}`));
+
         child.on("error", rej);
         child.on("exit", res);
     });
@@ -65,11 +68,12 @@ program
     .command("init")
     .description("initialize a new project")
     .argument("<dir>", "the root of the project")
-    .option("-f, --force", "overwrite existing folder")
+    .option("-f, --force", "overwrite existing folder", false)
+    .option("-g, --nogit", "don't use git", false)
     .addOption(
         new Option("-t, --template <template>", "the template to use").choices(Object.keys(templates)).default("empty")
     )
-    .action(async (root: string, opts: { force?: boolean; auto?: boolean; template: keyof typeof templates }) => {
+    .action(async (root: string, opts: { force: boolean; template: keyof typeof templates; nogit: boolean }) => {
         const projectRoot = join(process.cwd(), root);
 
         if (await exists(projectRoot)) {
@@ -168,7 +172,14 @@ loadScenes();
             )
         );
 
-        await makeFile(join(projectRoot, ".gitignore"), projectRoot, ["node_modules", "package-lock.json"].join("\n"));
+        if (!opts.nogit) {
+            await makeFile(
+                join(projectRoot, ".gitignore"),
+                projectRoot,
+                ["node_modules", "package-lock.json", "dist"].join("\n")
+            );
+            await runCommand("git init", projectRoot);
+        }
 
         await makeFile(
             join(projectRoot, "package.json"),
@@ -203,6 +214,7 @@ loadScenes();
                     compilerOptions: {
                         strict: true,
                         lib: ["DOM", "ESNext"],
+                        target: "ESNext",
                         module: "ESNext",
                         types: ["vite/client", "./node_modules/kaboom/dist/global.d.ts"],
                         moduleResolution: "Bundler",
