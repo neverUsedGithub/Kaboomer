@@ -2,7 +2,7 @@
 import { mkdir, writeFile, stat, rm } from "fs/promises";
 import { join, dirname, relative } from "path";
 import { exec } from "child_process";
-import { program } from "commander";
+import { Option, program } from "commander";
 import chalk from "chalk";
 
 const PACKAGE_NAME_REGEX = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
@@ -37,12 +37,39 @@ function runCommand(command: string, cwd: string) {
 
 program.name("kaboomer").version("0.0.1").description("A CLI to scaffold KaboomJS games.");
 
+const templates = {
+    empty: {
+        assets: null,
+        "src/components": null,
+        "src/scenes/main.ts": `export default function scene() {
+    add([ text("Hello, World!"), pos(width() / 2, height() / 2) ]);
+}`,
+    },
+    "multi-scene": {
+        assets: null,
+        "src/components": null,
+        "src/scenes/main.ts": `export default function scene() {
+    add([ text("Click to go to scene 2."), pos(width() / 2, height() / 2) ]);
+
+    onClick(() => go("other"))
+}`,
+        "src/scenes/other.ts": `export default function scene() {
+    add([ text("Click to go to scene 1."), pos(width() / 2, height() / 2) ]);
+
+    onClick(() => go("main"))
+}`,
+    },
+};
+
 program
     .command("init")
     .description("initialize a new project")
     .argument("<dir>", "the root of the project")
     .option("-f, --force", "overwrite existing folder")
-    .action(async (root: string, opts: { force?: boolean; auto?: boolean }) => {
+    .addOption(
+        new Option("-t, --template <template>", "the template to use").choices(Object.keys(templates)).default("empty")
+    )
+    .action(async (root: string, opts: { force?: boolean; auto?: boolean; template: keyof typeof templates }) => {
         const projectRoot = join(process.cwd(), root);
 
         if (await exists(projectRoot)) {
@@ -53,11 +80,24 @@ program
             await rm(projectRoot, { recursive: true });
         }
 
-        console.log(`${chalk.cyan.bold("info")} scaffolding inside ${root}\n`);
+        console.log(
+            `${chalk.cyan.bold("info")} scaffolding inside ${chalk.cyan(root)} using template ${chalk.yellow(
+                opts.template
+            )}\n`
+        );
 
         await makeFolders(projectRoot);
 
         await makeFolders(join(projectRoot, "assets"));
+
+        const usedTemplate = templates[opts.template];
+        for (const [path, fileValue] of Object.entries(usedTemplate)) {
+            const realPath = join(projectRoot, ...path.split("/"));
+
+            if (fileValue === null) await makeFolders(realPath);
+            else if (typeof fileValue === "string") await makeFile(realPath, projectRoot, fileValue);
+            else await makeFile(realPath, projectRoot, JSON.stringify(fileValue, null, 4));
+        }
 
         await makeFile(
             join(projectRoot, "src", "index.ts"),
@@ -96,49 +136,6 @@ async function loadScenes() {
 }
 
 loadScenes();
-`
-        );
-
-        await makeFile(
-            join(projectRoot, "src", "components", "greet.ts"),
-            projectRoot,
-            `export function addGreetText(name: string = "World") {
-    return add([
-        text(\`Hello, \$\{name\}!\`),
-        pos(width() / 2, height() / 2)
-    ]);
-}`
-        );
-
-        await makeFile(
-            join(projectRoot, "src", "scenes", "main.ts"),
-            projectRoot,
-            `import { addGreetText } from "@components/greet";
-
-export default function scene() {
-    console.log("SCENE main");
-    addGreetText("Kaboomer");
-
-    onClick(() => {
-        go("other");
-    });
-}
-`
-        );
-
-        await makeFile(
-            join(projectRoot, "src", "scenes", "other.ts"),
-            projectRoot,
-            `import { addGreetText } from "@components/greet";
-
-export default function scene() {
-    console.log("SCENE other");
-    addGreetText("Other");
-
-    onClick(() => {
-        go("main");
-    });
-};
 `
         );
 
@@ -207,8 +204,8 @@ export default function scene() {
                         strict: true,
                         lib: ["DOM", "ESNext"],
                         module: "ESNext",
-                        typeRoots: ["./node_modules"],
-                        types: ["kaboom/dist/global.d.ts", "vite/client"],
+                        types: ["vite/client", "./node_modules/kaboom/dist/global.d.ts"],
+                        moduleResolution: "Bundler",
                         paths: {
                             "@assets/*": ["./assets/*"],
                             "@components/*": ["./src/components/*"],
