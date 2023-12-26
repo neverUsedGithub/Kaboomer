@@ -38,7 +38,7 @@ function runCommand(command: string, cwd: string) {
     });
 }
 
-program.name("kaboomer").version("0.0.1").description("A CLI to scaffold KaboomJS games.");
+program.name("kaboomer").version("0.1.5").description("A CLI to scaffold KaboomJS games.");
 
 const templates = {
     empty: {
@@ -129,10 +129,10 @@ async function loadScenes() {
         // Define the scene.
         const sceneName = scenePath.replace(SCENE_FILE, "$1");
 
-        scene(sceneName, async () => {
-            const sceneInit: { default: () => any } = (await scenes[scenePath]()) as any;
+        scene(sceneName, async (props: any) => {
+            const sceneInit: { default: (props: any) => any } = (await scenes[scenePath]()) as any;
 
-            sceneInit.default();
+            sceneInit.default(props);
         });
     }
 
