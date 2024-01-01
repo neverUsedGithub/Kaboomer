@@ -38,28 +38,40 @@ function runCommand(command: string, cwd: string) {
     });
 }
 
-program.name("kaboomer").version("0.1.5").description("A CLI to scaffold KaboomJS games.");
+program.name("kaboomer").version("0.1.6").description("A CLI to scaffold KaboomJS games.");
 
 const templates = {
     empty: {
         assets: null,
+        "src/objects": null,
         "src/components": null,
         "src/scenes/main.ts": `export default function scene() {
     add([ text("Hello, World!"), pos(width() / 2, height() / 2) ]);
 }`,
     },
-    "multi-scene": {
+    basic: {
         assets: null,
         "src/components": null,
-        "src/scenes/main.ts": `export default function scene() {
-    add([ text("Click to go to scene 2."), pos(width() / 2, height() / 2) ]);
-
-    onClick(() => go("other"))
+        "src/objects/message.ts": `export default function message(content: string) {
+    return make([
+        text(content, { size: 50 }), //
+        anchor("center"),
+        pos(width() / 2, height() / 2),
+    ]);
 }`,
-        "src/scenes/other.ts": `export default function scene() {
-    add([ text("Click to go to scene 1."), pos(width() / 2, height() / 2) ]);
+        "src/scenes/main.ts": `import message from "@objects/message";
 
-    onClick(() => go("main"))
+export default function scene() {
+    add(message("Click to go to scene 2."));
+
+    onClick(() => go("other"));
+}`,
+        "src/scenes/other.ts": `import message from "@objects/message";
+
+export default function scene() {
+    add(message("Click to go to scene 1."));
+
+    onClick(() => go("main"));
 }`,
     },
 };
@@ -71,7 +83,9 @@ program
     .option("-f, --force", "overwrite existing folder", false)
     .option("-g, --nogit", "don't use git", false)
     .addOption(
-        new Option("-t, --template <template>", "the template to use").choices(Object.keys(templates)).default("empty")
+        new Option("-t, --template <template>", "the template to use")
+            .choices(Object.keys(templates))
+            .default("basic" satisfies keyof typeof templates)
     )
     .action(async (root: string, opts: { force: boolean; template: keyof typeof templates; nogit: boolean }) => {
         const projectRoot = join(process.cwd(), root);
@@ -144,6 +158,14 @@ loadScenes();
         );
 
         await makeFile(
+            join(projectRoot, "src", "constants.ts"),
+            projectRoot,
+            `// You can define constants here, that you can later access by importing '@constants'
+
+`
+        );
+
+        await makeFile(
             join(projectRoot, "index.html"),
             projectRoot,
             `<!DOCTYPE html>
@@ -195,6 +217,7 @@ loadScenes();
                         start: "vite build && vite preview",
                         format: "prettier -w src/**",
                     },
+                    type: "module",
                     dependencies: { kaboom: "latest" },
                     devDependencies: { vite: "latest", prettier: "latest" },
                     keywords: [],
@@ -221,6 +244,8 @@ loadScenes();
                         paths: {
                             "@assets/*": ["./assets/*"],
                             "@components/*": ["./src/components/*"],
+                            "@objects/*": ["./src/objects/*"],
+                            "@constants": ["./src/constants.ts"],
                         },
                     },
                 },
@@ -240,13 +265,15 @@ export default defineConfig({
         alias: {
             "@assets": fileURLToPath(new URL("./assets", import.meta.url)),
             "@components": fileURLToPath(new URL("./src/components", import.meta.url)),
+            "@objects": fileURLToPath(new URL("./src/objects", import.meta.url)),
+            "@constants": fileURLToPath(new URL("./src/constants.ts", import.meta.url)),
         },
     },
 });
 `
         );
 
-        const recommendedCommands = [`cd ${root}`, `npm install -D`, `npm run dev`];
+        const recommendedCommands = [`cd ${root}`, `npm i`, `npm run dev`];
 
         console.log(`\n${chalk.green.bold("done")} scaffolded project in ${chalk.cyan(root)}, get started by running:`);
 
