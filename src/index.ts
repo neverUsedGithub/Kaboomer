@@ -106,6 +106,32 @@ program
 
         await makeFolders(projectRoot);
 
+        await makeFile(
+            join(projectRoot, "public", "manifest.json"),
+            projectRoot,
+            JSON.stringify(
+                {
+                    lang: "en-us",
+                    name: "Kaboomer Game",
+                    short_name: "Kaboomer Game",
+                    description: "A game generated using Kaboomer.",
+                    start_url: "/",
+                    background_color: "#a83a32",
+                    theme_color: "#a83a32",
+                    orientation: "landscape",
+                    display: "standalone",
+                    icons: [
+                        {
+                            src: "https://kaboomjs.com/static/img/k.png",
+                            sizes: "160x160",
+                        },
+                    ],
+                },
+                null,
+                4
+            )
+        );
+
         await makeFolders(join(projectRoot, "assets"));
 
         const usedTemplate = templates[opts.template];
@@ -173,7 +199,15 @@ loadScenes();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="manifest.json">
     <title>Kaboomer Project</title>
+    <style>
+        html, body {
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
 </head>
 <body>
     <script type="module" src="src/index.ts"></script>

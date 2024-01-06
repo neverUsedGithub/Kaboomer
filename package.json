@@ -1,13 +1,13 @@
 {
     "name": "kaboomer",
-    "version": "0.1.6",
+    "version": "0.1.7",
     "description": "",
     "main": "index.js",
     "bin": {
         "kaboomer": "./dist/index.js"
     },
     "scripts": {
-        "start": "tsx src init test-proj --force",
+        "start": "tsx src init test-proj --force --nogit",
         "build": "tsup"
     },
     "files": [
