@@ -1,8 +1,9 @@
 #!/usr/bin/env node
+import { version as kaboomerVersion } from "../package.json";
 import { mkdir, writeFile, stat, rm } from "fs/promises";
 import { join, dirname, relative } from "path";
-import { exec } from "child_process";
 import { Option, program } from "commander";
+import { exec } from "child_process";
 import chalk from "chalk";
 
 const PACKAGE_NAME_REGEX = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
@@ -38,7 +39,7 @@ function runCommand(command: string, cwd: string) {
     });
 }
 
-program.name("kaboomer").version("0.1.6").description("A CLI to scaffold KaboomJS games.");
+program.name("kaboomer").version(kaboomerVersion).description("A CLI to scaffold KaboomJS games.");
 
 const templates = {
     empty: {
@@ -75,6 +76,75 @@ export default function scene() {
 }`,
     },
 };
+
+function capitalize(str: string) {
+    return str[0].toUpperCase() + str.substring(1).toLowerCase();
+}
+
+function normalizeName(str: string) {
+    return str.replace(/-[a-zA-Z]/, (m) => m[1].toUpperCase());
+}
+
+program
+    .command("add")
+    .description("create a new scene/object/component")
+    .argument("<type>", "defines what to create, one of scene, object or component")
+    .argument("<name>", "the name of the created scene/object/component")
+    .action(async (type: string, name: string) => {
+        if (!["scene", "object", "component"].includes(type)) {
+            console.error(`${chalk.red("err ")} type must be on of 'scene', 'object' or 'component'`);
+            process.exit(1);
+        }
+
+        if (!(await exists(join(process.cwd(), "src", "scenes")))) {
+            console.error(`${chalk.red("err ")} you must execute kaboomer add inside the root of your project`);
+            process.exit(1);
+        }
+
+        const variableName = normalizeName(name);
+
+        if (type === "scene") {
+            await makeFile(
+                join(process.cwd(), "src", "scenes", `${name}.ts`),
+                process.cwd(),
+                `export default function ${variableName}() {
+    
+}`
+            );
+        } else if (type === "object") {
+            await makeFile(
+                join(process.cwd(), "src", "objects", `${name}.ts`),
+                process.cwd(),
+                `export default function ${variableName}() {
+    return make([
+        
+    ]);
+}`
+            );
+        } else if (type === "component") {
+            await makeFile(
+                join(process.cwd(), "src", "components", `${name}.ts`),
+                process.cwd(),
+                `import type { Comp, GameObj } from "kaboom";
+
+export default function ${variableName}() {
+    return {
+        id: "${name}",
+        require: [],
+    } satisfies Comp & ThisType<GameObj> & Record<string, any>;
+    // To fully type \`this\` inside component you will need to
+    // include their respective Comp variants inside \`GameObj<...>\`
+    // For example if you have: \`require: [ "pos" ]\` you will need to add
+    // \`PosComp\` to \`GameObj<...>\`
+}
+
+export type ${capitalize(
+    variableName
+                )}Comp = { [K in Exclude<keyof ReturnType<typeof ${variableName}>, keyof Comp>]: ReturnType<typeof ${variableName}>[K] };
+`
+            );
+        }
+    });
 
 program
     .command("init")
