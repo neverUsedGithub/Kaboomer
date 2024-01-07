@@ -132,15 +132,15 @@ export default function ${variableName}() {
         id: "${name}",
         require: [],
     } satisfies Comp & ThisType<GameObj> & Record<string, any>;
-    // To fully type \`this\` inside component you will need to
-    // include their respective Comp variants inside \`GameObj<...>\`
+    // To fully type \`this\` inside component you will need to include your
+    // required component ids respective Comp variants inside \`GameObj<...>\`
     // For example if you have: \`require: [ "pos" ]\` you will need to add
     // \`PosComp\` to \`GameObj<...>\`
 }
 
 export type ${capitalize(
     variableName
-                )}Comp = { [K in Exclude<keyof ReturnType<typeof ${variableName}>, keyof Comp>]: ReturnType<typeof ${variableName}>[K] };
+                )}Comp = ReturnType<typeof ${variableName}>;
 `
             );
         }
